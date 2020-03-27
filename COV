@@ -1,0 +1,63 @@
+title: "COVID_INDIA"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(sf)
+library(tmap)
+library(tmaptools)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(gganimate)
+library(tidyverse)
+library(tweenr)
+library(plotly)
+COV <- read.csv("COV24:3.csv")
+india2 <- st_read("IND_adm1.shp", stringsAsFactors = TRUE)
+COV_india <- inner_join(india2, COV, by=c("NAME_1"="State_UT" ))
+india3 <- st_read("IND_adm2.shp", stringsAsFactors = TRUE)
+day <- read.csv("COV_DAY.csv", stringsAsFactors = FALSE)
+day <- day %>% mutate(Date=as.Date(Date, format = "%d/%m/%Y"))
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Statewise Statistics 
+
+```{r}
+tm_shape(COV_india)+
+  tm_polygons("Total_cases", id="NAME_1", palette="Blues",
+              breaks=c(0, 2, 5, 10, 30, 50, 75, 150), style="fixed")
+tmap_mode("view")
+tmap_last()
+```
+
+### Trend of COVID-19 Cases
+
+```{r}
+
+m <- as.data.frame(day)
+plot_ly(data = m, x= ~Date, y= ~No_Cases, type = "scatter", mode="lines+markers")
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### District-wise Statistics 
+
+```{r}
+tm_shape(india3)+
+  tm_fill("Cases", id=paste("NAME_2"), palette="-Set1",alpha = 0.5,
+              breaks=c(0,1, 5, 10, 20,50,75 ), style="fixed", covert2density=TRUE)
+tmap_mode("view")
+tmap_last()
+
+```
