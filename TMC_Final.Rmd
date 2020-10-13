@@ -1,0 +1,662 @@
+---
+title: "Surveillance and Supportive supervison of TMCs in Ganjam District"
+author:  "Department of Community Medicine  \nMKCG Medical College, Ganjam"
+output:
+ prettydoc::html_pretty:
+  word_document: default
+  pdf_document: default
+  toc: TRUE
+theme: hpstr
+figure_width: 10
+fontsize: 18pt
+---
+<style>
+body {
+    position: absolute;
+    left: 0px;}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+#Date of reporting: 
+__Date: "`r format(Sys.time(), '%d %B, %Y')`"__
+
+
+```{r echo=FALSE, include=FALSE}
+library(httr)
+library(plyr)
+library(tidyverse)
+library(devtools)
+library(kableExtra)
+library(DT)
+library(lubridate)
+library(plotly)
+library(ggmap)
+library(sf)
+library(mapview)
+source_url("https://raw.githubusercontent.com/ppsapkota/kobohr_apitoolbox/master/R/r_func_ps_kobo_utils.R")
+url_mkcg<-"https://kc.humanitarianresponse.info/api/v1/data/542034.csv"
+d_raw_mkcg <- kobohr_getdata_csv(url_mkcg, "mkcgcm2020", "cm@mkcg2020")
+TMC_MKCG <- as.data.frame(unclass(d_raw_mkcg))
+TMC_MKCG<- data.frame(lapply(TMC_MKCG, as.factor))
+str(TMC_MKCG)
+TMC_MKCG$Block_Name <- revalue(TMC_MKCG$Block_Name, c("1"="Aska","2"="Beguniapada","3"="Bellaguntha","4"="Bhanjanagar", "5"="Buguda", "6"="Chhatrapur", "7"="Chikiti", "8"="Dharakote", "9"="Digapahandi", "10"="Ganjam", "11"="Hinjilicut", "12"="J.prasad", "13"="KsNagar", "14"="Khalikote", "15"="Kukudakhandi", "16"="Patrapur",
+  "17"="Polsara", "18"="Purusottampur", "19"="Rangeilunda", "20"="Sankhemundi",
+  "21"="Seragad","22"= "Surada"))
+
+
+#split Dataset into 4 parts: 
+#Part-1: General information, Avg. no of staffs and pattern, Logistic
+#availability and knowledge about their use.
+
+#P1 General information about TMCs, logistic supplied and practice and practices among staffs
+TMC_P1 <- TMC_MKCG %>% select(3:5,8:20, 23:27,33, 39)
+TMC_P1$No_Staffs <- as.numeric(as.character(TMC_P1$No_Staffs))
+
+#P2 Demographic details about the inmates 
+TMC_P2 <- TMC_MKCG %>% select(3:5, 28:32)
+TMC_P2$Inmates_Number <- as.numeric(as.character(TMC_P2$Inmates_Number))
+TMC_P2$Males_Inmates <- as.numeric(as.character(TMC_P2$Males_Inmates))
+TMC_P2$Female_Inmates <- as.numeric(as.character(TMC_P2$Female_Inmates))
+TMC_P2$No_of_Children <- as.numeric(as.character(TMC_P2$No_of_Children))
+TMC_P2$No_of_Pregnant_Women <- as.numeric(as.character(TMC_P2$No_of_Pregnant_Women))
+
+
+#P3, Mask, sanitizer and utensils to the inmates 
+TMC_P3 <- TMC_MKCG %>% select(3:5, 45, 50, 51)
+
+
+#p4 water supply, electricity supply, food supply and 
+TMC_P4 <- TMC_MKCG %>% select(3:5, 61:69, 97)
+
+
+#P5 No of rooms, average no of latrine  and Latrine per rooms, average no of basin, no of rooms alloted and no of persons per rooms 
+
+TMC_P5 <- TMC_MKCG %>% select(3:5, 28, 41,44,55, 57)
+TMC_P5$Inmates_Number <- as.numeric(as.character(TMC_P5$Inmates_Number))
+TMC_P5$Rooms_Nos <- as.numeric(as.character(TMC_P5$Rooms_Nos))
+
+TMC_P5$Latrine_Nos <- as.numeric(as.character(TMC_P5$Latrine_Nos))
+TMC_P5$Wash_basin_Nos <- as.numeric(as.character(TMC_P5$Wash_basin_Nos))
+
+
+#p6 Infaection Prevention Control Measures in TMCs:
+TMC_P6 <- TMC_MKCG %>% select(3:5, 73,77,71,79,72,59,70)
+
+#P7: status of health check ups and recreational facilities
+TMC_P7 <- TMC_MKCG %>% select(3:5,89, 90,91, 92:94,86, 95)
+TMC_P7$ASHA_visits_Nos <- as.numeric(as.character(TMC_P7$ASHA_visits_Nos))
+TMC_P7$ANM_visit_No <- as.numeric(as.character(TMC_P7$ANM_visit_No))
+TMC_P7$No_of_inmate_s_tested_positive <- as.numeric(as.character(TMC_P7$No_of_inmate_s_tested_positive))
+
+#P8 Security Features in TMCs
+TMC_P8 <- TMC_MKCG %>% select(3:5,97:103)
+
+#Geocoding and Maps
+TMC_P9 <- TMC_MKCG %>% select(Block_Name,   X_Geo_tagging_latitude, X_Geo_tagging_longitude)
+TMC_P9$X_Geo_tagging_latitude <- as.numeric(as.character(TMC_P9$X_Geo_tagging_latitude))
+TMC_P9$X_Geo_tagging_longitude <- as.numeric(as.character(TMC_P9$X_Geo_tagging_longitude))
+
+```
+
+
+
+
+
+
+#Table: 1: Date-wise TMCs Surveillance Conducted in Ganjm District 
+```{r echo=FALSE, eval=TRUE}
+TMC_MKCG_FILTERED <- d_raw_mkcg %>% select(1, 3:5)
+TMC_MKCG_FILTERED$Block_Name <- as.factor(TMC_MKCG_FILTERED$Block_Name)
+TMC_MKCG_FILTERED$Block_Name <- revalue(TMC_MKCG_FILTERED$Block_Name, c("1"="Aska","2"="Beguniapada","3"="Bellaguntha","4"="Bhanjanagar", "5"="Buguda", "6"="Chhatrapur", "7"="Chikiti", "8"="Dharakote", "9"="Digapahandi", "10"="Ganjam", "11"="Hinjilicut", "12"="J.prasad", "13"="KsNagar", "14"="Khalikote", "15"="Kukudakhandi", "16"="Patrapur","17"="Polsara", "18"="Purusottampur", "19"="Rangeilunda", "20"="Sankhemundi","21"="Seragad","22"= "Surada"))
+
+TMC_MKCG_FILTERED$start <- as.Date(ymd_hms(TMC_MKCG_FILTERED$start))
+TMC_MKCG_FILTERED$start <- as.factor(TMC_MKCG_FILTERED$start )
+
+datatable(TMC_MKCG_FILTERED, filter = "top", colnames = c("Date", "Block", "Name of the TMCs", "Village"))
+
+```
+
+
+#Summary of the Table-1
+```{r, echo=FALSE}
+TMC_Summary <- TMC_MKCG_FILTERED %>% group_by(start, Block_Name) %>% 
+  summarise(length(QC_Name))
+datatable(TMC_Summary, filter = "top", colnames = c("Date", "Block", "No of TMCs"))
+
+```
+
+
+__Geo-mapping__
+```{r,fig.width=10,fig.height=12, echo=FALSE}
+loc_sf <- locations_sf <- st_as_sf(TMC_P9, coords = c( "X_Geo_tagging_longitude", "X_Geo_tagging_latitude"), na.fail=FALSE,crs = 4326)
+#mapview(loc_sf, map.types="OpenStreetMap", burst=FALSE)
+rhty <- read_sf("GIS_TMC.shp")
+mapview(list(rhty, loc_sf), map.types="OpenStreetMap", burst=FALSE)
+
+```
+
+
+
+
+
+
+
+#Table-2:Block-wise General measures in TMCs
+
+This table shows the number of staffs deployed for TMCs, the availability of Microplan, Mask and sanitzer and the presence of register and its maintainanc
+```{r, echo=FALSE}
+TMC_Gen <- TMC_P1 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            #"No. of Villages "=length(Village_Name),
+            "Total Staffs Deployed"=sum(No_Staffs, is.na=FALSE),
+            "Micro-plan Available"=sum(MP_Available=="1"),
+            "No. of TMCs where Mask Provided"=sum(Mask_Adequate_staffs=="1"),
+            "No. of TMCs where Sanitizer Provided"=sum(Sanitiser_Adequate_staffs=="1"),
+            "No of TMCs where register is present"=sum(Register_Present=="1"),
+            "No. of TMCs where Register is maintained"=sum(Register_Maintained=="1"))
+
+# TMC_Gen1 <- TMC_Gen %>% select(1:4, 17:19)
+ colnames(TMC_Gen)[1] <- "Name of the Blocks"
+#pander::pander(TMC_Gen, split.table = Inf)
+#kable(TMC_Gen,booktabs = TRUE) %>% kable_styling(bootstrap_options = "striped", full_width = T)
+datatable(TMC_Gen, filter = "top")
+```
+
+
+
+#Summary of the Table-2
+```{r, echo=FALSE}
+Total <- colSums(TMC_Gen[-1])
+Total <- as.data.frame(Total)
+Total_s <- Total %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total/Total[1], 2))
+
+kable(Total_s, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+```
+
+
+
+
+**Figure-1**
+```{r,fig.width=10,  echo=FALSE}
+Total_SII <- Total_s[-2, ]
+fig1 <- Total_SII %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 15))+
+xlab("")+
+  coord_flip()
+ggplotly(fig1)
+```
+
+
+
+#Table-3: Practice of use of mask and knowledge about handwashing among staffs at TMCs
+
+```{r, echo=FALSE}
+TMC_Gen2 <- TMC_P1 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "No of center where staffs using mask"=sum(Are_they_wearing_masks=="yes"),
+            "No of centers where staffs have knowledge of hand washing"=
+              sum(Do_they_know_about_h_steps_of_handwashing=="yes"))
+colnames(TMC_Gen2)[1] <- "Name of the Blocks"
+#pander::pander(TMC_Gen2, split.table = Inf)
+datatable(TMC_Gen2, filter = "top")
+```
+
+
+#Symmary of Table-3
+```{r, echo=FALSE}
+Total2 <- colSums(TMC_Gen2[-1])
+Total2 <- as.data.frame(Total2)
+Total_s3 <- Total2 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total2/Total2[1], 2))
+kable(Total_s3, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+```
+
+**Figure-2**
+```{r,fig.width=10,  echo=FALSE}
+my.labels <- c(  "No of center where \nstaffs using mask","No of centers \nwhere staffs have \nknowledge of hand washing", "No of TMC Visited" )
+fig2 <- Total_s3 %>% ggplot( aes(x=Summary, y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 10))+
+  scale_x_discrete(labels= my.labels)+
+  xlab("")+
+  coord_flip()
+ggplotly(fig2)
+```
+
+
+
+
+
+
+#Table-4: Blockwise details about Inmates residing at TMCs
+```{r, echo=FALSE}
+TMC_Inmates <- TMC_P2 %>% group_by(Block_Name) %>% 
+   summarise("No of Inmates" =sum(Inmates_Number),
+             " Males "=sum(Males_Inmates),
+             "Female "=sum(Female_Inmates),
+             "Children"=sum(No_of_Children),
+             #"Pregnant Women"=sum(No_of_Pregnant_Women)
+             )
+TMC_Inmates[is.na(TMC_Inmates)] = 0    
+colnames(TMC_Inmates)[1] <- "Name of the Blocks "
+#pander::pander(TMC_Inmates, split.table = Inf)
+datatable(TMC_Inmates, filter = "top")
+```
+
+
+#Summary of Table-4
+```{r, echo=FALSE}
+Total4 <- colSums(TMC_Inmates[-1])
+Total4 <- as.data.frame(Total4)
+Total_s4 <- Total4 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total4/Total4[1], 2))
+kable(Total_s4, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+
+```
+
+
+
+**Figure-3**
+```{r,fig.width=10,  echo=FALSE}
+fig3 <- Total_s4 %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 15))+
+xlab("")+
+  coord_flip()
+ggplotly(fig3)
+```
+
+
+
+#Table-5: TMCs whith adequate supply of the mask and its use and  supply of seperate utensil, buckets and soap to Inmates:
+
+```{r, echo=FALSE}
+TMC_Inmates2<- TMC_P3 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "No of centers where masks were distributed to Inmates"=
+              sum(Mask_Inmates=="1"),
+            "No of center where Inmates using mask"=sum(Inmates_using_Mask=="1"),
+            "No of centers where utensils/soap/buccket were distributed to Inmates"=sum(Sep_Utensils=="1"))
+colnames(TMC_Inmates2)[1] <- "Name of the Blocks"
+#pander::pander(TMC_Inmates2, split.table = Inf)
+datatable(TMC_Inmates2, filter = "top")
+```
+
+
+
+
+#Summary of Table-5:
+```{r, echo=FALSE}
+Total5 <- colSums(TMC_Inmates2[-1])
+Total5 <- as.data.frame(Total5)
+Total_s5 <- Total5 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total5/Total5[1], 2))
+kable(Total_s5, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+```
+*Few centers mask was not distributed by Govt. but they have prior mask or using cloth mask. 
+
+
+
+**Figure-4**
+```{r, fig.width=10,echo=FALSE, }
+my.labels2 <- c("No of centers where \nmasks were distributed to Inmates", "No of center where \nInmates using mask" , "No of centers where \nutensils/soap/buccket \nwere distributed to Inmates","No of TMCs Visited")
+fig4 <- Total_s5 %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 10))+
+  scale_x_discrete(labels= my.labels2)+
+xlab("")+
+  coord_flip()
+ggplotly(fig4)
+
+
+```
+
+
+
+
+
+
+
+#Table-6: TMCs with Water,Electricity and Food supply to Inmates
+
+```{r, echo=FALSE}
+TMC_Inmates3<- TMC_P4 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "24*7 Electricity(n)"=
+              sum(Electricity=="1"),
+            "24*7 Water(n)"=sum(Water_supply=="1"),
+            "Drinking Filter water(n) "=sum(Drinking_water_source.1=="TRUE"),
+     "Drinking Boiled water(n) "=sum(Drinking_water_source.2=="TRUE"),
+            "Drinking Tap water "=sum(Drinking_water_source.3=="TRUE"),
+            "Drinking Well water(n) "=sum(Drinking_water_source.4=="TRUE"),
+            "Food supply by caterer(n)"=sum(Food_supply.1=="TRUE"),
+            "Food supply by SHG(n)"=sum(Food_supply.2=="TRUE"),
+            "Food supply by Others(n)"=sum(Food_supply.3=="TRUE"),
+            )
+colnames(TMC_Inmates3)[1] <- "Name of the Blocks"
+#pander::pander(TMC_Inmates3, split.table = Inf)
+#kable(TMC_Inmates3,booktabs = TRUE) %>% kable_styling(bootstrap_options = "striped", full_width = T)
+datatable(TMC_Inmates3, filter = "top")
+```
+
+
+#Summary of Table-6
+
+```{r, echo=TRUE, echo=FALSE}
+Total6 <- colSums(TMC_Inmates3[-1])
+Total6 <- as.data.frame(Total6)
+Total_s6 <- Total6 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total6/Total6[1], 2))
+kable(Total_s6, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+
+
+```
+
+
+
+
+**Figure-5**
+```{r,fig.width=10,  echo=FALSE}
+fig5 <- Total_s6 %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 15))+
+xlab("")+
+  coord_flip()
+ggplotly(fig5)
+```
+
+
+
+
+
+
+
+#Table-7: Details about TMCs interm of no of rooms, latrines,basins,no of beds per room, distance maintains & risk of overcrowding
+
+```{r, echo=FALSE}
+tmc_inmates4 <- TMC_P5 %>% mutate("Persons/Room"=Inmates_Number/Rooms_Nos,
+                                  "Persons/Latrine"= Inmates_Number/Latrine_Nos)
+TMC_Inmates5 <- tmc_inmates4 %>% group_by(Block_Name) %>% 
+  summarise("Avg no of Rooms/TMCs"= round(mean(Rooms_Nos),0),
+            "Avg. of No of Preson/Rooms in a Block "=round(mean(`Persons/Room`),0),
+            "Avg. no of Latrine/TMCs" = round(mean(Latrine_Nos),0),
+            "Avg. no of Person/Latrine in a Block"=round(mean(`Persons/Latrine`),0)
+            )
+
+colnames(TMC_Inmates5)[1] <- "Name of the Blocks"
+#pander::pander(TMC_Inmates5, split.table = Inf)
+datatable(TMC_Inmates5, filter = "top")
+
+```
+
+#Summary of Table-7
+```{r, echo=FALSE}
+Total7 <- round(colMeans(TMC_Inmates5[-1]), 0)
+Total7 <- as.data.frame(Total7)
+#Total_s7 <- Total7 %>% rownames_to_column("Symmary") %>% 
+  #mutate("%"=round(100*Total7/Total7[1], 2))
+kable(Total7, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+#Table-8: Infection prevention control in TMCs
+
+```{r, echo=FALSE}
+TMC_IPC <- TMC_P6 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "No of TMCs where Disinfectant provided"=sum(Disinfectant_provided=="1"),
+            "No of TMCs following propermethod of disinfection"=sum(Method_Disinfection=="1"),
+            "No of TMCs where color-coded dustbins are present"=sum(Dustbin=="1"),
+            "No of TMCs following BMW management system"=sum(Waste_disposal=="1"),
+            "No of TMCs where drainage facility available"=sum(Drainage_facility=="1"),
+            "No of TMCs where IEC displayed"=sum(IEC_displayed=="1"),
+            "No of TMCs where food supplier following IPC"=sum(Foor_supplier_IPC=="1"))
+
+colnames(TMC_IPC)[1] <- "Name of the Blocks"
+#pander::pander(TMC_IPC, split.table = Inf)
+
+datatable(TMC_IPC, filter = "top")
+
+```
+
+
+
+#Summary of Table-8
+```{r, echo=FALSE}
+Total8 <- round(colSums(TMC_IPC[-1]), 0)
+Total8 <- as.data.frame(Total8)
+Total_s8 <- Total8 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total8/Total8[1], 2))
+kable(Total_s8, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+
+```
+
+
+
+**Figure-6**
+```{r,fig.width=10,  echo=FALSE}
+fig6 <- Total_s8 %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 10))+
+xlab("")+
+  coord_flip()
+ggplotly(fig6)
+```
+
+
+
+
+
+
+
+
+#Table-9: Status of health chek ups and recreational facilities at TMCs
+
+```{r, echo=FALSE}
+
+TMC_health <- TMC_P7 %>% mutate(ASHA=if_else(ASHA_visits_Nos>=2, "Yes", "No"),                   ANM=if_else(ANM_visit_No>=1,"Yes", "No"),
+          check_ups=if_else(Health_Chekup==!2, "No", "Yes"))
+
+TMC_health2 <- TMC_health %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "No of Centers where ASHA visited as per protocol"=sum(ASHA=="Yes"),
+            "No of Centers where ANM visited as per protocol"=sum(ANM=="Yes"),
+            "No of Center wehre health check ups are being done"=sum(check_ups=="Yes"),
+            "No of TMCs where separate rooms for symptoaic cases"=sum(Symptom_P_separated=="1"),
+            "No of TMCs where Positive Cases found"=sum(Did_any_inmate_test_positive_f=="1"),
+            "Total No of Positive Cases in a block"=sum(No_of_inmate_s_tested_positive),
+           "No of TMCs where test of room-mates of the positve case is done"=sum(Have_other_inmates_o_the_TMC_been_tested=="1")
+           )
+            
+colnames(TMC_health2)[1] <- "Name of the Blocks"
+#pander::pander(TMC_health2, split.table = Inf)   
+datatable(TMC_health2, filter = "top")
+
+
+```
+
+
+#Summary of the table-9
+```{r, echo=FALSE}
+Total9<- round(colSums(TMC_health2[-1]), 0)
+Total9 <- as.data.frame(Total9)
+Total_s9 <- Total9 %>% rownames_to_column("Summary") %>% 
+  mutate("%"=round(100*Total9/Total9[1], 2))
+kable(Total_s9, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+```
+
+
+
+**Figure-7**
+```{r,fig.width=10,  echo=FALSE, eval=FALSE}
+fig7<- Total_s9 %>% ggplot( aes(x=reorder(Summary,`%`), y=`%`)) +
+geom_segment( aes(xend=Summary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 15))+
+xlab("")+
+  coord_flip()
+ggplotly(fig7)
+```
+
+
+
+
+#Table-10: Security Measures at different TMCs
+
+```{r echo=FALSE}
+TMC_security<- TMC_P8 %>% group_by(Block_Name) %>% 
+  summarise("No of TMC Visited "=length(QC_Name),
+            "No of TMCs with Separate entry-exit"=sum(Entry_exit_Sep=="1"),
+            "No of TMCs with Barricading"= sum(Barricading=="1"),
+            "No of TMCs with Sucurity Available"=sum(Security_S=="1"),
+            "No of TMCs Located away from residence areas"=sum(TMC_location_away=="1"),
+            "No of TMCs located away from Gathering"=sum(TMC_l_away_gathering=="1"),
+            "No of TMCs having Good accessability"=sum(Accessibility_QC=="1")
+            )
+colnames(TMC_security)[1] <- "Name of the Blocks"
+#pander::pander(TMC_security, split.table = Inf) 
+datatable(TMC_security, filter = "top")
+
+```
+
+
+
+#Summary of the Table-10
+```{r, echo=FALSE}
+Total10<- round(colSums(TMC_security[-1]), 0)
+Total10 <- as.data.frame(Total10)
+Total_s10 <- Total10 %>% rownames_to_column("Symmary") %>% 
+  mutate("%"=round(100*Total10/Total10[1], 2))
+kable(Total_s10, booktans=TRUE) %>% kable_styling(full_width = TRUE)
+
+
+
+```
+
+
+
+**Figure-8** 
+```{r,fig.width=10,  echo=FALSE}
+fig10 <- Total_s10 %>% ggplot( aes(x=reorder(Symmary, `%`),y=`%`)) +
+geom_segment( aes(xend=Symmary, yend=0)) +
+geom_point( size=4, color="Orange") +
+  theme_bw()+
+  theme(axis.text.y = element_text(size = 15))+
+xlab("")+
+  coord_flip()
+ggplotly(fig10)
+```
+
+
+
+
+
+
+
+**List of the TMCs where MP is not avialibale:** 
+```{r,echo=FALSE, eval=FALSE}
+list_mask <- TMC_P1 %>% group_by(Block_Name) %>% filter(MP_Available=="0") %>% select(Block_Name, QC_Name)
+colnames(list_mask) <- c("Name of the Block", "TMCs")
+pander::pander(list_mask, split.table = Inf)
+```
+
+
+**List where Mask is not distrubuted health worker**
+```{r, echo=FALSE, eval=FALSE}
+#Name of the Centers where Adequate mask is not provided, 
+#Name of the Center where adequate Sanitizer is not provided.
+list_nomask <- TMC_P1 %>% group_by(Block_Name) %>% filter(Mask_Adequate_staffs=="0") %>% select(Block_Name, QC_Name)
+colnames(list_mask) <- c("Name of the Block", "TMCs")
+pander::pander(list_mask, split.table = Inf)
+
+
+
+```
+
+
+
+
+List where Mask is not distrubuted health worker 
+```{r, echo=FALSE, eval=FALSE}
+#Name of the Centers where Adequate mask is not provided, 
+#Name of the Center where adequate Sanitizer is not provided.
+list_nomask <- TMC_P1 %>% group_by(Block_Name) %>% filter(Mask_Adequate_staffs=="0") %>% select(Block_Name, QC_Name)
+colnames(list_mask) <- c("Name of the Block", "TMCs")
+pander::pander(list_mask, split.table = Inf)
+
+
+
+```
+
+
+
+
+
+
+**List of the TMCs where Senitizer is not provided:**
+```{r, echo=FALSE, eval=FALSE}
+list_nosanitizer <- TMC_P1 %>% group_by(Block_Name) %>% filter(Sanitiser_Adequate_staffs=="0") %>% select(Block_Name, QC_Name)
+colnames(list_mask) <- c("Name of the Block", "TMCs")
+pander::pander(list_mask, split.table = Inf)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
